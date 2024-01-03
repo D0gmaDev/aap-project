@@ -59,6 +59,12 @@ typedef struct
     int eval;
 } T_eval;
 
+typedef struct
+{
+    int *legalMoves;
+    int count;
+} T_LegalMoves;
+
 void fillNewGame(T_Super_Morpion *position)
 {
     for (int i = 0; i < 81; i++)
@@ -323,52 +329,19 @@ int evaluate(T_Super_Morpion *position)
     return 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation;
 }
 
-int evaluateLoudly(T_Super_Morpion *position)
-{
-    int macroEvaluation = evaluateTTT(position->grilles);
-
-    int numberOfGrillesWon = 0;
-
-    for (int i = 0; i < 9; i++)
-    {
-        switch (position->grilles[i])
-        {
-        case NOIR:
-            numberOfGrillesWon++;
-            break;
-        case BLANC:
-            numberOfGrillesWon--;
-            break;
-        default:
-            break;
-        }
-    }
-
-    int microEvaluation = 0;
-
-    for (int i = 0; i < 9; i++)
-    {
-        microEvaluation += evaluateSmallMorpion(position, i);
-    }
-
-    printf("40 * %d + 3 * %d + %d = %d\n", macroEvaluation, numberOfGrillesWon, microEvaluation, 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation);
-    return 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation;
-}
-
-// renvoie le tableau des coups possibles, avec -1 à la fin du tableau. La mémoire doit être libérée après utilisation
-int *getLegalMoves(T_Super_Morpion *position)
+// renvoie le tableau des coups possibles, avec -1 à la fin du tableau. Le pointeur doit être libérée après utilisation
+T_LegalMoves getLegalMoves(T_Super_Morpion *position)
 {
     if (position->lastCoupId == -1)
     {
-        int *legalMoves = malloc(82 * sizeof(int));
+        int *legalMoves = malloc(81 * sizeof(int));
         assert(legalMoves != NULL);
 
         for (int i = 0; i < 81; i++)
         {
             legalMoves[i] = i;
         }
-        legalMoves[81] = -1;
-        return legalMoves;
+        return (T_LegalMoves){legalMoves, 81};
     }
 
     int nextGrille = position->lastCoupId % 9;
@@ -388,13 +361,11 @@ int *getLegalMoves(T_Super_Morpion *position)
                 legalMovesCount++;
             }
         }
-
-        legalMoves[legalMovesCount] = -1;
-        return legalMoves;
+        return (T_LegalMoves){legalMoves, legalMovesCount};
     }
     else
     {
-        int *legalMoves = malloc(10 * sizeof(int));
+        int *legalMoves = malloc(9 * sizeof(int));
         assert(legalMoves != NULL);
 
         int baseIndex = 9 * nextGrille;
@@ -407,15 +378,13 @@ int *getLegalMoves(T_Super_Morpion *position)
                 legalMovesCount++;
             }
         }
-
-        legalMoves[legalMovesCount] = -1;
-        return legalMoves;
+        return (T_LegalMoves){legalMoves, legalMovesCount};
     }
 }
 
-void checkForNoLegalMoves(int *legalMoves)
+void checkForNoLegalMoves(T_LegalMoves *legalMoves)
 {
-    if (legalMoves[0] == -1)
+    if (legalMoves->count == 0)
     {
         printf("Il n'y a plus de coups possibles, la partie est terminée !\n");
         exit(0);
@@ -446,7 +415,7 @@ void printSuperMorpion(T_Super_Morpion *position)
         }
         printf("-- -- -- -- -- -- -- --\n");
     }
-    printf("Evaluation de la position : %d\n", evaluateLoudly(position));
+    printf("Evaluation de la position : %d\n", evaluate(position));
 }
 
 void makeMove(T_Super_Morpion *position, int move)
@@ -480,16 +449,14 @@ T_eval minimax(T_Super_Morpion position, int depth, int isMax)
         return (T_eval){-1, evaluate(&position)};
     }
 
-    int *legalMoves = getLegalMoves(&position);
-
-    checkForNoLegalMoves(legalMoves);
+    T_LegalMoves legalMoves = getLegalMoves(&position);
 
     int bestEval = isMax ? -1000 : 1000;
     int bestMove = -3;
 
-    for (int i = 0; legalMoves[i] != -1; i++)
+    for (int i = 0; i < legalMoves.count; i++)
     {
-        int move = legalMoves[i];
+        int move = legalMoves.legalMoves[i];
 
         T_Super_Morpion newPosition = position;
         makeMove(&newPosition, move);
@@ -514,7 +481,7 @@ T_eval minimax(T_Super_Morpion position, int depth, int isMax)
         }
     }
 
-    free(legalMoves);
+    free(legalMoves.legalMoves);
     return (T_eval){bestMove, bestEval};
 }
 
@@ -596,30 +563,25 @@ void drawPositionToFile(T_Super_Morpion *position)
     free(dotCommand);
 }
 
-// print un tableau de positions jusqu'à -1
-void printPositionArray(int *array)
+void printLegalMovesArray(T_LegalMoves *legalMoves)
 {
-    int i = 0;
-    while (array[i] != -1)
+    for (int i = 0; i < legalMoves->count; i++)
     {
-        char *move = convertIndexToMove(array[i++]);
+        char *move = convertIndexToMove(legalMoves->legalMoves[i]);
         printf("%s | ", move);
         free(move);
     }
     printf("\n");
 }
 
-// vérifie si un nombre est dans une liste d'entiers se terminant par -1
-int isInArray(int *array, int number)
+int isInLegalMoves(T_LegalMoves *legalMoves, int number)
 {
-    int i = 0;
-    while (array[i] != -1)
+    for (int i = 0; i < legalMoves->count; i++)
     {
-        if (array[i] == number)
+        if (legalMoves->legalMoves[i] == number)
         {
             return 1;
         }
-        i++;
     }
     return 0;
 }
@@ -634,22 +596,22 @@ void playSuperMorpion(int minimaxDepth)
         printSuperMorpion(&position);
         drawPositionToFile(&position);
 
-        int *legalMoves = getLegalMoves(&position);
+        T_LegalMoves legalMoves = getLegalMoves(&position);
 
         printf("Coups possibles : ");
-        printPositionArray(legalMoves);
+        printLegalMovesArray(&legalMoves);
 
         char move[10];
         int moveIndex = -2;
 
-        while (!isInArray(legalMoves, moveIndex))
+        while (!isInLegalMoves(&legalMoves, moveIndex))
         {
             printf("Entrez votre coup : ");
             fgets(move, sizeof(move), stdin);
             moveIndex = convertMoveToIndex(move);
         }
 
-        free(legalMoves);
+        free(legalMoves.legalMoves);
 
         makeMove(&position, moveIndex);
 
@@ -663,11 +625,11 @@ void playSuperMorpion(int minimaxDepth)
         }
 
         // vérifie si l'ordinateur peut jouer au moins un coup
-        int *computerLegalMoves = getLegalMoves(&position);
+        T_LegalMoves computerLegalMoves = getLegalMoves(&position);
         printf("Coups possibles pour l'ordinateur : ");
-        printPositionArray(computerLegalMoves);
-        checkForNoLegalMoves(computerLegalMoves);
-        free(computerLegalMoves);
+        printLegalMovesArray(&computerLegalMoves);
+        checkForNoLegalMoves(&computerLegalMoves);
+        free(computerLegalMoves.legalMoves);
 
         int start = clock();
 
