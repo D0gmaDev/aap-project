@@ -131,40 +131,6 @@ char *convertIndexToMove(int index)
     return move;
 }
 
-enum T_Couleur getTTTWinner(enum T_Couleur *cases)
-{
-    for (int i = 0; i < 3; i++)
-    {
-        if (cases[i] != VIDE && cases[i] == cases[i + 3] && cases[i] == cases[i + 6])
-        {
-            return cases[i];
-        }
-    }
-
-    for (int i = 0; i < 9; i += 3)
-    {
-        if (cases[i] != VIDE && cases[i] == cases[i + 1] && cases[i] == cases[i + 2])
-        {
-            return cases[i];
-        }
-    }
-
-    if (cases[4] == VIDE) // pas de diagonales sans la case du milieu
-        return VIDE;
-
-    if (cases[0] == cases[4] && cases[0] == cases[8])
-    {
-        return cases[0];
-    }
-
-    if (cases[2] == cases[4] && cases[2] == cases[6])
-    {
-        return cases[2];
-    }
-
-    return VIDE;
-}
-
 int getBoardPopulationCount(enum T_Couleur *cases)
 {
     int count = 0;
@@ -202,17 +168,54 @@ int isTTTBoardEmpty(enum T_Couleur *cases)
     return 1;
 }
 
+enum T_Couleur getTTTWinner(enum T_Couleur *cases)
+{
+    if (isTTTBoardEmpty(cases))
+        return VIDE;
+
+    for (int i = 0; i < 3; i++)
+    {
+        if (cases[i] != VIDE && cases[i] == cases[i + 3] && cases[i] == cases[i + 6])
+        {
+            return cases[i];
+        }
+    }
+
+    for (int i = 0; i < 9; i += 3)
+    {
+        if (cases[i] != VIDE && cases[i] == cases[i + 1] && cases[i] == cases[i + 2])
+        {
+            return cases[i];
+        }
+    }
+
+    if (cases[4] == VIDE) // pas de diagonales sans la case du milieu
+        return VIDE;
+
+    if (cases[0] == cases[4] && cases[0] == cases[8])
+    {
+        return cases[0];
+    }
+
+    if (cases[2] == cases[4] && cases[2] == cases[6])
+    {
+        return cases[2];
+    }
+
+    return VIDE;
+}
+
 void proccessAlignment(int *count, int cases[3])
 {
-    if (count[VIDE] == 1)
+    if (cases[VIDE] == 1)
     {
-        if (count[NOIR] == 2)
+        if (cases[NOIR] == 2)
         {
-            *count++;
+            (*count)++;
         }
-        else if (count[BLANC] == 2)
+        else if (cases[BLANC] == 2)
         {
-            *count--;
+            (*count)--;
         }
     }
 }
@@ -224,7 +227,7 @@ int evaluateTTT(enum T_Couleur cases[])
 
     if (winnerColor != VIDE)
     {
-        return (winnerColor == BLANC) ? -8 : 8;
+        return (winnerColor == NOIR) ? 8 : -8;
     }
 
     if (isTTTBoardFull(cases))
@@ -316,7 +319,7 @@ int evaluateSmallMorpion(T_Super_Morpion *position, int grilleIndex)
     return eval;
 }
 
-int evaluate(T_Super_Morpion *position, int isMax)
+int evaluate(T_Super_Morpion *position)
 {
     int macroEvaluation;
 
@@ -335,9 +338,16 @@ int evaluate(T_Super_Morpion *position, int isMax)
 
     for (int i = 0; i < 9; i++)
     {
-        if (position->grilles[i] == (isMax ? NOIR : BLANC))
+        switch (position->grilles[i])
         {
+        case NOIR:
             numberOfGrillesWon++;
+            break;
+        case BLANC:
+            numberOfGrillesWon--;
+            break;
+        default:
+            break;
         }
     }
 
@@ -442,6 +452,7 @@ void printSuperMorpion(T_Super_Morpion *position)
         }
         printf("-- -- -- -- -- -- -- --\n");
     }
+    printf("Evaluation de la position : %d\n", evaluate(position));
 }
 
 void invalidateCache(T_Super_Morpion *position, int grilleIndex)
@@ -479,7 +490,8 @@ T_eval minimax(T_Super_Morpion position, int depth, int isMax)
 {
     if (depth == 0)
     {
-        return (T_eval){-1, evaluate(&position, isMax)};
+        // au niveau de recherche 0, on ne propose pas de coup (-1) mais on évalue juste la position courante
+        return (T_eval){-1, evaluate(&position)};
     }
 
     int *legalMoves = getLegalMoves(&position);
@@ -681,7 +693,7 @@ void playSuperMorpion(int minimaxDepth)
         int end = clock();
 
         char *computerMove = convertIndexToMove(eval.moveId);
-        printf("Coup joué par l'ordinateur: %s (eval: %d, temps: %.2fs)\n", computerMove, eval.eval, (double)(end - start) / CLOCKS_PER_SEC);
+        printf("Coup joué par l'ordinateur: %s (maxEval: %d, temps: %.2fs)\n", computerMove, eval.eval, (double)(end - start) / CLOCKS_PER_SEC);
         free(computerMove);
 
         makeMove(&position, eval.moveId);
@@ -699,6 +711,8 @@ void playSuperMorpion(int minimaxDepth)
 int main(int argc, char **argv)
 {
     int miniMaxDepth = argc > 1 ? atoi(argv[1]) : DEFAULT_MINIMAX_DEPTH;
+    assert(miniMaxDepth > 0);
+
     playSuperMorpion(miniMaxDepth);
     return 0;
 }
