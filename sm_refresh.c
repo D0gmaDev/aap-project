@@ -329,7 +329,7 @@ int evaluate(T_Super_Morpion *position)
     return 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation;
 }
 
-// renvoie le tableau des coups possibles, avec -1 à la fin du tableau. Le pointeur doit être libérée après utilisation
+// renvoie la structure des coups possibles. Le pointeur .legalMoves doit être libéré après utilisation
 T_LegalMoves getLegalMoves(T_Super_Morpion *position)
 {
     if (position->lastCoupId == -1)
@@ -503,6 +503,8 @@ void drawPositionToFile(T_Super_Morpion *position)
     FILE *file = fopen(dotPath, "w");
     assert(file != NULL);
 
+    int lastCoupId = position->lastCoupId;
+
     fprintf(file, "digraph  {\na0 [shape=none label=<\n<TABLE border=\"0\" cellspacing=\"10\" cellpadding=\"10\" style=\"rounded\" bgcolor=\"black\">\n");
 
     for (int i = 0; i < 9; i++)
@@ -516,14 +518,15 @@ void drawPositionToFile(T_Super_Morpion *position)
 
         if (winner == VIDE)
         {
-            fprintf(file, "<TD bgcolor=\"white\">\n<TABLE border=\"0\" cellspacing=\"10\" cellpadding=\"10\" style=\"rounded\" bgcolor=\"black\">\n");
+            fprintf(file, "<TD bgcolor=\"%s\">\n<TABLE border=\"0\" cellspacing=\"10\" cellpadding=\"10\" style=\"rounded\" bgcolor=\"black\">\n", lastCoupId % 9 == i ? "grey" : "white");
 
             for (int j = 0; j < 3; j++)
             {
+                int caseIndex = i * 9 + j * 3;
                 fprintf(file, "<TR>\n");
-                fprintf(file, "<TD bgcolor=\"white\">%c</TD>\n", getSymbol(position->cases[i * 9 + j * 3]));
-                fprintf(file, "<TD bgcolor=\"white\">%c</TD>\n", getSymbol(position->cases[i * 9 + j * 3 + 1]));
-                fprintf(file, "<TD bgcolor=\"white\">%c</TD>\n", getSymbol(position->cases[i * 9 + j * 3 + 2]));
+                fprintf(file, "<TD bgcolor=\"%s\">%c</TD>\n", caseIndex == lastCoupId ? "grey" : "white", getSymbol(position->cases[caseIndex]));
+                fprintf(file, "<TD bgcolor=\"%s\">%c</TD>\n", caseIndex + 1 == lastCoupId ? "grey" : "white", getSymbol(position->cases[caseIndex + 1]));
+                fprintf(file, "<TD bgcolor=\"%s\">%c</TD>\n", caseIndex + 2 == lastCoupId ? "grey" : "white", getSymbol(position->cases[caseIndex + 2]));
                 fprintf(file, "</TR>\n");
             }
         }
@@ -597,6 +600,8 @@ void playSuperMorpion(int minimaxDepth)
         drawPositionToFile(&position);
 
         T_LegalMoves legalMoves = getLegalMoves(&position);
+
+        checkForNoLegalMoves(&legalMoves);
 
         printf("Coups possibles : ");
         printLegalMovesArray(&legalMoves);
