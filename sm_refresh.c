@@ -5,7 +5,6 @@
 #include <string.h>
 
 #define DEFAULT_MINIMAX_DEPTH 6
-#define CACHE_INVALID_VALUE -2435
 #define UPPER_CASE_SHIFT -32
 
 enum T_Couleur // on utilise une enum (on pourrait utiliser aussi des constantes symboliques)
@@ -48,17 +47,10 @@ enum T_Couleur getOther(enum T_Couleur couleur)
 
 typedef struct
 {
-    int grillesCacheEval[9];
-    int grilleEval;
-} T_Eval_Cache;
-
-typedef struct
-{
     enum T_Couleur cases[81];
     enum T_Couleur grilles[9];
     enum T_Couleur trait;
     int lastCoupId;
-    T_Eval_Cache *evalCache;
 } T_Super_Morpion;
 
 typedef struct
@@ -67,7 +59,7 @@ typedef struct
     int eval;
 } T_eval;
 
-void fillNewGame(T_Super_Morpion *position, T_Eval_Cache *evalCache)
+void fillNewGame(T_Super_Morpion *position)
 {
     for (int i = 0; i < 81; i++)
     {
@@ -79,7 +71,6 @@ void fillNewGame(T_Super_Morpion *position, T_Eval_Cache *evalCache)
     }
     position->trait = BLANC;
     position->lastCoupId = -1;
-    position->evalCache = evalCache;
 }
 
 int getGrilleIndex(int positionIndex)
@@ -92,15 +83,6 @@ int getCaseIndex(int positionIndex)
 {
     int caseIndex = positionIndex % 9;
     return caseIndex;
-}
-
-void fillEvalCache(T_Eval_Cache *evalCache)
-{
-    for (int i = 0; i < 9; i++)
-    {
-        evalCache->grillesCacheEval[i] = CACHE_INVALID_VALUE;
-    }
-    evalCache->grilleEval = CACHE_INVALID_VALUE;
 }
 
 int convertMoveToIndex(char *move)
@@ -304,35 +286,15 @@ int evaluateTTT(enum T_Couleur cases[])
 
 int evaluateSmallMorpion(T_Super_Morpion *position, int grilleIndex)
 {
-    // cache check
-    if (position->evalCache->grillesCacheEval[grilleIndex] != CACHE_INVALID_VALUE)
-    {
-        return position->evalCache->grillesCacheEval[grilleIndex];
-    }
-
-    // calcul
     int grilleStart = grilleIndex * 9;
 
     int eval = evaluateTTT(&position->cases[grilleStart]);
-
-    position->evalCache->grillesCacheEval[grilleIndex] = eval;
     return eval;
 }
 
 int evaluate(T_Super_Morpion *position)
 {
-    int macroEvaluation;
-
-    // cache check
-    if (position->evalCache->grilleEval != CACHE_INVALID_VALUE)
-    {
-        macroEvaluation = position->evalCache->grilleEval;
-    }
-    else
-    {
-        macroEvaluation = evaluateTTT(position->cases);
-        position->evalCache->grilleEval = macroEvaluation;
-    }
+    int macroEvaluation = evaluateTTT(position->grilles);
 
     int numberOfGrillesWon = 0;
 
@@ -358,6 +320,38 @@ int evaluate(T_Super_Morpion *position)
         microEvaluation += evaluateSmallMorpion(position, i);
     }
 
+    return 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation;
+}
+
+int evaluateLoudly(T_Super_Morpion *position)
+{
+    int macroEvaluation = evaluateTTT(position->grilles);
+
+    int numberOfGrillesWon = 0;
+
+    for (int i = 0; i < 9; i++)
+    {
+        switch (position->grilles[i])
+        {
+        case NOIR:
+            numberOfGrillesWon++;
+            break;
+        case BLANC:
+            numberOfGrillesWon--;
+            break;
+        default:
+            break;
+        }
+    }
+
+    int microEvaluation = 0;
+
+    for (int i = 0; i < 9; i++)
+    {
+        microEvaluation += evaluateSmallMorpion(position, i);
+    }
+
+    printf("40 * %d + 3 * %d + %d = %d\n", macroEvaluation, numberOfGrillesWon, microEvaluation, 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation);
     return 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation;
 }
 
@@ -452,12 +446,7 @@ void printSuperMorpion(T_Super_Morpion *position)
         }
         printf("-- -- -- -- -- -- -- --\n");
     }
-    printf("Evaluation de la position : %d\n", evaluate(position));
-}
-
-void invalidateCache(T_Super_Morpion *position, int grilleIndex)
-{
-    position->evalCache->grillesCacheEval[grilleIndex] = CACHE_INVALID_VALUE;
+    printf("Evaluation de la position : %d\n", evaluateLoudly(position));
 }
 
 void makeMove(T_Super_Morpion *position, int move)
@@ -466,14 +455,11 @@ void makeMove(T_Super_Morpion *position, int move)
 
     int grilleIndex = getGrilleIndex(move);
 
-    invalidateCache(position, grilleIndex);
-
     enum T_Couleur winner = getTTTWinner(&position->cases[grilleIndex * 9]);
 
     if (winner != VIDE)
     {
         position->grilles[grilleIndex] = winner;
-        position->evalCache->grilleEval = CACHE_INVALID_VALUE; // on invalide le cache de la grille globale
 
         for (int i = 0; i < 9; i++)
         {
@@ -640,11 +626,8 @@ int isInArray(int *array, int number)
 
 void playSuperMorpion(int minimaxDepth)
 {
-    T_Eval_Cache evalCache;
-    fillEvalCache(&evalCache);
-
     T_Super_Morpion position;
-    fillNewGame(&position, &evalCache);
+    fillNewGame(&position);
 
     while (1)
     {
