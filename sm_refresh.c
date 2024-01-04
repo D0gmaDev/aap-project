@@ -12,14 +12,14 @@
 int convertMoveToIndex(char *move)
 {
     int grille = move[0] - '1';
-    // espace ignoré
+    // espace move[1] ignoré
     int colonne = move[2] - 'a';
     int ligne = move[3] - '1';
 
     return grille * 9 + ligne * 3 + colonne;
 }
 
-// implémentations de super_morpion.h spécifiques à ce livrable
+// implémentation de super_morpion.h spécifique à ce livrable
 char *convertIndexToMove(int index)
 {
     char *move = malloc(5 * sizeof(char));
@@ -38,19 +38,23 @@ char *convertIndexToMove(int index)
     return move;
 }
 
-void proccessAlignment(int *count, int cases[3])
+void proccessAlignmentAndClear(int *i, int count[3])
 {
-    if (cases[VIDE] == 1)
+    if (count[VIDE] == 1)
     {
-        if (cases[NOIR] == 2)
+        if (count[NOIR] == 2)
         {
-            (*count)++;
+            (*i)++;
         }
-        else if (cases[BLANC] == 2)
+        else if (count[BLANC] == 2)
         {
-            (*count)--;
+            (*i)--;
         }
     }
+
+    count[NOIR] = 0;
+    count[BLANC] = 0;
+    count[VIDE] = 0;
 }
 
 // Les blancs gagnent : c'est négatif, les noirs gagnent : c'est positif, égalité : 0
@@ -76,7 +80,7 @@ int evaluateTTT(enum T_Couleur cases[])
 
     int count[3] = {0, 0, 0}; // compter le nombre de pions de chaque couleur
 
-    // vérifier le nombre d'alignement de deux pions de la même couleur alignés avec un pion vide
+    // calculer le nombre d'alignement de deux pions de la même couleur avec un pion vide
     int numberOfAlignments = 0;
 
     // Vérification des lignes et colonnes
@@ -85,21 +89,13 @@ int evaluateTTT(enum T_Couleur cases[])
         int rowIndex = i * 3;
         int colIndex = i;
 
-        count[NOIR] = 0;
-        count[BLANC] = 0;
-        count[VIDE] = 0;
-
         for (int j = 0; j < 3; j++)
         {
             enum T_Couleur couleur = cases[rowIndex + j];
             count[couleur]++;
         }
 
-        proccessAlignment(&numberOfAlignments, count);
-
-        count[NOIR] = 0;
-        count[BLANC] = 0;
-        count[VIDE] = 0;
+        proccessAlignmentAndClear(&numberOfAlignments, count);
 
         // Vérification des colonnes
         for (int j = 0; j < 3; j++)
@@ -108,29 +104,21 @@ int evaluateTTT(enum T_Couleur cases[])
             count[couleur]++;
         }
 
-        proccessAlignment(&numberOfAlignments, count);
+        proccessAlignmentAndClear(&numberOfAlignments, count);
     }
 
     // Vérification des diagonales
-    count[NOIR] = 0;
-    count[BLANC] = 0;
-    count[VIDE] = 0;
-
     count[cases[0]]++;
     count[cases[4]]++;
     count[cases[8]]++;
 
-    proccessAlignment(&numberOfAlignments, count);
-
-    count[NOIR] = 0;
-    count[BLANC] = 0;
-    count[VIDE] = 0;
+    proccessAlignmentAndClear(&numberOfAlignments, count);
 
     count[cases[2]]++;
     count[cases[4]]++;
     count[cases[6]]++;
 
-    proccessAlignment(&numberOfAlignments, count);
+    proccessAlignmentAndClear(&numberOfAlignments, count);
 
     return numberOfAlignments;
 }
