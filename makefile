@@ -3,8 +3,8 @@ all: tttree sm_refresh
 tttree: tttree.c
 	gcc -o tttree tttree.c
 
-sm_refresh: sm_refresh.c
-	gcc -o sm_refresh sm_refresh.c
+sm_refresh: sm_refresh.c super_morpion.c super_morpion.h
+	gcc -o sm_refresh sm_refresh.c super_morpion.c
 
 .PHONY: clean
 

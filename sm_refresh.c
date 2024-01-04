@@ -4,93 +4,11 @@
 #include <time.h>
 #include <string.h>
 
+#include "super_morpion.h" // toutes les fonctions et structures relatives au super morpion
+
 #define DEFAULT_MINIMAX_DEPTH 6
-#define UPPER_CASE_SHIFT -32
 
-enum T_Couleur // on utilise une enum (on pourrait utiliser aussi des constantes symboliques)
-{
-    NOIR,
-    BLANC,
-    VIDE,
-};
-
-enum T_Couleur getCouleur(char c)
-{
-    if (c == 'x')
-        return NOIR;
-    if (c == 'o')
-        return BLANC;
-    return VIDE;
-}
-
-char getSymbol(enum T_Couleur couleur)
-{
-    if (couleur == NOIR)
-        return 'x';
-    if (couleur == BLANC)
-        return 'o';
-    return '.';
-}
-
-enum T_Couleur getOther(enum T_Couleur couleur)
-{
-    switch (couleur)
-    {
-    case VIDE:
-        return VIDE;
-    case BLANC:
-        return NOIR;
-    case NOIR:
-        return BLANC;
-    }
-}
-
-typedef struct
-{
-    enum T_Couleur cases[81];
-    enum T_Couleur grilles[9];
-    enum T_Couleur trait;
-    int lastCoupId;
-} T_Super_Morpion;
-
-typedef struct
-{
-    int moveId;
-    int eval;
-} T_eval;
-
-typedef struct
-{
-    int *legalMoves;
-    int count;
-} T_LegalMoves;
-
-void fillNewGame(T_Super_Morpion *position)
-{
-    for (int i = 0; i < 81; i++)
-    {
-        position->cases[i] = VIDE;
-    }
-    for (int i = 0; i < 9; i++)
-    {
-        position->grilles[i] = VIDE;
-    }
-    position->trait = BLANC;
-    position->lastCoupId = -1;
-}
-
-int getGrilleIndex(int positionIndex)
-{
-    int grilleIndex = positionIndex / 9;
-    return grilleIndex;
-}
-
-int getCaseIndex(int positionIndex)
-{
-    int caseIndex = positionIndex % 9;
-    return caseIndex;
-}
-
+// implémentation de super_morpion.h spécifique à ce livrable
 int convertMoveToIndex(char *move)
 {
     int grille = move[0] - '1';
@@ -101,6 +19,7 @@ int convertMoveToIndex(char *move)
     return grille * 9 + ligne * 3 + colonne;
 }
 
+// implémentations de super_morpion.h spécifiques à ce livrable
 char *convertIndexToMove(int index)
 {
     char *move = malloc(5 * sizeof(char));
@@ -117,80 +36,6 @@ char *convertIndexToMove(int index)
     move[3] = ligne + '1';
     move[4] = '\0';
     return move;
-}
-
-int getBoardPopulationCount(enum T_Couleur *cases)
-{
-    int count = 0;
-    for (int i = 0; i < 9; i++)
-    {
-        if (cases[i] != VIDE)
-        {
-            count++;
-        }
-    }
-    return count;
-}
-
-int isTTTBoardFull(enum T_Couleur *cases)
-{
-    for (int i = 0; i < 9; i++)
-    {
-        if (cases[i] == VIDE)
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int isTTTBoardEmpty(enum T_Couleur *cases)
-{
-    for (int i = 0; i < 9; i++)
-    {
-        if (cases[i] != VIDE)
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-enum T_Couleur getTTTWinner(enum T_Couleur *cases)
-{
-    if (isTTTBoardEmpty(cases))
-        return VIDE;
-
-    for (int i = 0; i < 3; i++)
-    {
-        if (cases[i] != VIDE && cases[i] == cases[i + 3] && cases[i] == cases[i + 6])
-        {
-            return cases[i];
-        }
-    }
-
-    for (int i = 0; i < 9; i += 3)
-    {
-        if (cases[i] != VIDE && cases[i] == cases[i + 1] && cases[i] == cases[i + 2])
-        {
-            return cases[i];
-        }
-    }
-
-    if (cases[4] == VIDE) // pas de diagonales sans la case du milieu
-        return VIDE;
-
-    if (cases[0] == cases[4] && cases[0] == cases[8])
-    {
-        return cases[0];
-    }
-
-    if (cases[2] == cases[4] && cases[2] == cases[6])
-    {
-        return cases[2];
-    }
-
-    return VIDE;
 }
 
 void proccessAlignment(int *count, int cases[3])
@@ -329,59 +174,6 @@ int evaluate(T_Super_Morpion *position)
     return 40 * macroEvaluation + 3 * numberOfGrillesWon + microEvaluation;
 }
 
-// renvoie la structure des coups possibles. Le pointeur .legalMoves doit être libéré après utilisation
-T_LegalMoves getLegalMoves(T_Super_Morpion *position)
-{
-    if (position->lastCoupId == -1)
-    {
-        int *legalMoves = malloc(81 * sizeof(int));
-        assert(legalMoves != NULL);
-
-        for (int i = 0; i < 81; i++)
-        {
-            legalMoves[i] = i;
-        }
-        return (T_LegalMoves){legalMoves, 81};
-    }
-
-    int nextGrille = position->lastCoupId % 9;
-
-    int legalMovesCount = 0;
-
-    if (position->grilles[nextGrille] != VIDE || isTTTBoardFull(&position->cases[9 * nextGrille]))
-    {
-        int *legalMoves = malloc(72 * sizeof(int));
-        assert(legalMoves != NULL);
-
-        for (int i = 0; i < 81; i++)
-        {
-            if (position->cases[i] == VIDE)
-            {
-                legalMoves[legalMovesCount] = i;
-                legalMovesCount++;
-            }
-        }
-        return (T_LegalMoves){legalMoves, legalMovesCount};
-    }
-    else
-    {
-        int *legalMoves = malloc(9 * sizeof(int));
-        assert(legalMoves != NULL);
-
-        int baseIndex = 9 * nextGrille;
-
-        for (int i = 0; i < 9; i++)
-        {
-            if (position->cases[baseIndex + i] == VIDE)
-            {
-                legalMoves[legalMovesCount] = baseIndex + i;
-                legalMovesCount++;
-            }
-        }
-        return (T_LegalMoves){legalMoves, legalMovesCount};
-    }
-}
-
 void checkForNoLegalMoves(T_LegalMoves *legalMoves)
 {
     if (legalMoves->count == 0)
@@ -389,33 +181,6 @@ void checkForNoLegalMoves(T_LegalMoves *legalMoves)
         printf("Il n'y a plus de coups possibles, la partie est terminée !\n");
         exit(0);
     }
-}
-
-void printSuperMorpion(T_Super_Morpion *position)
-{
-    printf("-- -- -- -- -- -- -- --\n");
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            char firstChar = position->grilles[i * 3] != VIDE ? getSymbol(position->grilles[i * 3]) + UPPER_CASE_SHIFT : ' ';
-            char secondChar = position->grilles[i * 3 + 1] != VIDE ? getSymbol(position->grilles[i * 3 + 1]) + UPPER_CASE_SHIFT : ' ';
-            char thirdChar = position->grilles[i * 3 + 2] != VIDE ? getSymbol(position->grilles[i * 3 + 2]) + UPPER_CASE_SHIFT : ' ';
-
-            printf(" %c %c %c | %c %c %c | %c %c %c \n",
-                   firstChar != ' ' ? firstChar : getSymbol(position->cases[27 * i + 3 * j + 0]),
-                   firstChar != ' ' ? firstChar : getSymbol(position->cases[27 * i + 3 * j + 1]),
-                   firstChar != ' ' ? firstChar : getSymbol(position->cases[27 * i + 3 * j + 2]),
-                   secondChar != ' ' ? secondChar : getSymbol(position->cases[27 * i + 3 * j + 9 + 0]),
-                   secondChar != ' ' ? secondChar : getSymbol(position->cases[27 * i + 3 * j + 9 + 1]),
-                   secondChar != ' ' ? secondChar : getSymbol(position->cases[27 * i + 3 * j + 9 + 2]),
-                   thirdChar != ' ' ? thirdChar : getSymbol(position->cases[27 * i + 3 * j + 18 + 0]),
-                   thirdChar != ' ' ? thirdChar : getSymbol(position->cases[27 * i + 3 * j + 18 + 1]),
-                   thirdChar != ' ' ? thirdChar : getSymbol(position->cases[27 * i + 3 * j + 18 + 2]));
-        }
-        printf("-- -- -- -- -- -- -- --\n");
-    }
-    printf("Evaluation de la position : %d\n", evaluate(position));
 }
 
 void makeMove(T_Super_Morpion *position, int move)
@@ -566,37 +331,14 @@ void drawPositionToFile(T_Super_Morpion *position)
     free(dotCommand);
 }
 
-void printLegalMovesArray(T_LegalMoves *legalMoves)
-{
-    for (int i = 0; i < legalMoves->count; i++)
-    {
-        char *move = convertIndexToMove(legalMoves->legalMoves[i]);
-        printf("%s | ", move);
-        free(move);
-    }
-    printf("\n");
-}
-
-int isInLegalMoves(T_LegalMoves *legalMoves, int number)
-{
-    for (int i = 0; i < legalMoves->count; i++)
-    {
-        if (legalMoves->legalMoves[i] == number)
-        {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 void playSuperMorpion(int minimaxDepth)
 {
     T_Super_Morpion position;
-    fillNewGame(&position);
+    fillNewGame(&position, BLANC);
 
     while (1)
     {
-        printSuperMorpion(&position);
+        printSuperMorpion(&position, evaluate(&position));
         drawPositionToFile(&position);
 
         T_LegalMoves legalMoves = getLegalMoves(&position);
@@ -620,7 +362,7 @@ void playSuperMorpion(int minimaxDepth)
 
         makeMove(&position, moveIndex);
 
-        printSuperMorpion(&position);
+        printSuperMorpion(&position, evaluate(&position));
         drawPositionToFile(&position);
 
         if (getTTTWinner(position.grilles) == BLANC)
@@ -650,7 +392,7 @@ void playSuperMorpion(int minimaxDepth)
 
         if (getTTTWinner(position.grilles) == NOIR)
         {
-            printSuperMorpion(&position);
+            printSuperMorpion(&position, evaluate(&position));
             drawPositionToFile(&position);
             printf("L'ordinateur a gagné !\n");
             return;
