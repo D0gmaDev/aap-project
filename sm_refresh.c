@@ -171,28 +171,6 @@ void checkForNoLegalMoves(T_LegalMoves *legalMoves)
     }
 }
 
-void makeMove(T_Super_Morpion *position, int move)
-{
-    position->cases[move] = position->trait;
-
-    int grilleIndex = getGrilleIndex(move);
-
-    enum T_Couleur winner = getTTTWinner(&position->cases[grilleIndex * 9]);
-
-    if (winner != VIDE)
-    {
-        position->grilles[grilleIndex] = winner;
-
-        for (int i = 0; i < 9; i++)
-        {
-            position->cases[grilleIndex * 9 + i] = winner;
-        }
-    }
-
-    position->trait = getOther(position->trait);
-    position->lastCoupId = move;
-}
-
 // une fonction récursive qui utilise l'algorithme minimax avec une profondeur "depth" pour trouver le meilleur coup à jouer
 T_eval minimax(T_Super_Morpion position, int depth, int isMax)
 {

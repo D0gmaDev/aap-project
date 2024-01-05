@@ -57,6 +57,8 @@ enum T_Couleur getTTTWinner(enum T_Couleur cases[]);
 // renvoie la structure des coups possibles. Le pointeur moves.legalMoves doit être libéré après utilisation
 T_LegalMoves getLegalMoves(T_Super_Morpion *position);
 
+void makeMove(T_Super_Morpion *position, int moveId);
+
 void printSuperMorpion(T_Super_Morpion *position, int evaluation);
 
 void printLegalMovesArray(T_LegalMoves *legalMoves);

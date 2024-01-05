@@ -188,6 +188,28 @@ T_LegalMoves getLegalMoves(T_Super_Morpion *position)
     }
 }
 
+void makeMove(T_Super_Morpion *position, int move)
+{
+    position->cases[move] = position->trait;
+
+    int grilleIndex = getGrilleIndex(move);
+
+    enum T_Couleur winner = getTTTWinner(&position->cases[grilleIndex * 9]);
+
+    if (winner != VIDE)
+    {
+        position->grilles[grilleIndex] = winner;
+
+        for (int i = 0; i < 9; i++)
+        {
+            position->cases[grilleIndex * 9 + i] = winner;
+        }
+    }
+
+    position->trait = getOther(position->trait);
+    position->lastCoupId = move;
+}
+
 void printSuperMorpion(T_Super_Morpion *position, int evaluation)
 {
     printf("-- -- -- -- -- -- -- --\n");
