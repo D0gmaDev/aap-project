@@ -15,5 +15,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: make tttree
       run: make tttree
-    - name: make sm_refresh
-      run: make sm_refresh
+    - name: make sm-refresh
+      run: make sm-refresh
+    - name: make sm-bot
+      run: make sm-bot
