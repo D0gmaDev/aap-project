@@ -339,8 +339,13 @@ void playSuperMorpion(int minimaxDepth)
 
         // vérifie si l'ordinateur peut jouer au moins un coup
         T_LegalMoves computerLegalMoves = getLegalMoves(&position);
-        printf("Coups possibles pour l'ordinateur : ");
-        printLegalMovesArray(&computerLegalMoves);
+
+        if (getenv("DEBUG") != NULL)
+        {
+            printf("[DEBUG] Coups possibles pour l'ordinateur : ");
+            printLegalMovesArray(&computerLegalMoves);
+        }
+
         checkForNoLegalMoves(&computerLegalMoves);
         free(computerLegalMoves.legalMoves);
 
@@ -370,6 +375,11 @@ int main(int argc, char **argv)
 {
     int miniMaxDepth = argc > 1 ? atoi(argv[1]) : DEFAULT_MINIMAX_DEPTH;
     assert(miniMaxDepth > 0);
+
+    if (getenv("DEBUG") != NULL)
+    {
+        printf("[DEBUG] Profondeur de recherche du minimax : %d\n", miniMaxDepth);
+    }
 
     playSuperMorpion(miniMaxDepth);
     return 0;

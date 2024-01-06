@@ -1,4 +1,4 @@
-all: tttree sm_refresh sm-bot
+all: tttree sm-refresh sm-bot
 
 tttree: tttree.c
 	gcc -o tttree tttree.c
