@@ -11,6 +11,20 @@
 // #define DEBUG
 
 // implémentation de super_morpion.h spécifique à ce livrable
+int convertMoveToIndex(char *move)
+{
+    char grille = move[0];
+    char caseIndex = move[1];
+
+    if (grille == '0' && caseIndex == '0') // premier coup
+    {
+        return -1;
+    }
+
+    return (grille - '1') * 9 + (caseIndex - '1');
+}
+
+// implémentation de super_morpion.h spécifique à ce livrable
 char *convertIndexToMove(int index)
 {
     char *move = malloc(3 * sizeof(char));
@@ -213,8 +227,10 @@ void fillPositionFromFen(T_Super_Morpion *position, char *fen)
     {
         position->grilles[i] = VIDE;
     }
+
     int positionIndex = 0;
     int fenIndex = 0;
+
     while (positionIndex < 81)
     {
         switch (fen[fenIndex])
@@ -228,7 +244,7 @@ void fillPositionFromFen(T_Super_Morpion *position, char *fen)
             positionIndex++;
             break;
         case 'X':
-            position->grilles[positionIndex / 9] = NOIR;
+            position->grilles[getGrilleIndex(positionIndex)] = NOIR;
             for (int i = 0; i < 9; i++)
             {
                 position->cases[positionIndex + i] = NOIR;
@@ -236,7 +252,7 @@ void fillPositionFromFen(T_Super_Morpion *position, char *fen)
             positionIndex += 9;
             break;
         case 'O':
-            position->grilles[positionIndex / 9] = BLANC;
+            position->grilles[getGrilleIndex(positionIndex)] = BLANC;
             for (int i = 0; i < 9; i++)
             {
                 position->cases[positionIndex + i] = BLANC;
@@ -246,7 +262,7 @@ void fillPositionFromFen(T_Super_Morpion *position, char *fen)
         default:
             if (isdigit(fen[fenIndex]))
             {
-                positionIndex += fen[fenIndex] - '0';
+                positionIndex += (fen[fenIndex] - '0');
             }
             else
             {
@@ -257,8 +273,9 @@ void fillPositionFromFen(T_Super_Morpion *position, char *fen)
         fenIndex++;
     }
     fenIndex++;
-    position->lastCoupId = ((fen[fenIndex++] - '0') - 1) * 9 + fen[fenIndex++] - '0' - 1;
-    position->trait = getCouleur(fen[++fenIndex]);
+    position->lastCoupId = convertMoveToIndex(&fen[fenIndex]);
+    fenIndex += 3; // on saute le coup et l'espace
+    position->trait = getCouleur(fen[fenIndex]);
 }
 
 int main(int argc, char **argv)
@@ -269,9 +286,19 @@ int main(int argc, char **argv)
         return 1;
     }
     char *fen = argv[1];
-    int time = atoi(argv[2]);
+    int secondsLeft = atoi(argv[2]);
     T_Super_Morpion game;
     fillPositionFromFen(&game, fen);
+
+    if (game.lastCoupId == -1)
+    {
+        char *move = convertIndexToMove(0);
+        printf("%s", move);
+        free(move);
+        return 0;
+    }
+
+    int depth = DEFAULT_MINIMAX_DEPTH - (secondsLeft > 20 ? 0 : (secondsLeft > 5 ? 1 : (secondsLeft > 2 ? 2 : 3)));
 
 #ifdef DEBUG
 
@@ -282,14 +309,14 @@ int main(int argc, char **argv)
     printf("Trait : %s\n", game.trait == NOIR ? "NOIR" : "BLANC");
 
     // T_eval bestMove = minimax(game, DEFAULT_MINIMAX_DEPTH, 1, game.trait);
-    T_eval bestMove = negamax(game, DEFAULT_MINIMAX_DEPTH, -1000, 1000, game.trait);
+    T_eval bestMove = negamax(game, depth, -1000, 1000, game.trait);
 
     printf("move : %s, eval : %d\n", convertIndexToMove(bestMove.moveId), bestMove.eval);
 
 #else
 
     // T_eval bestMove = minimax(game, DEFAULT_MINIMAX_DEPTH, 1, game.trait);
-    T_eval bestMove = negamax(game, DEFAULT_MINIMAX_DEPTH, -1000, 1000, game.trait);
+    T_eval bestMove = negamax(game, depth, -1000, 1000, game.trait);
 
     char *move = convertIndexToMove(bestMove.moveId);
     printf("%s", move);
