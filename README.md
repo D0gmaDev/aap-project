@@ -1,5 +1,5 @@
 
-# Fil Rouge 2023 AAP : Equipe Piks & Co
+# Fil Rouge 2023-2024 AAP : Equipe Piks & Co
 *Maieul Brisquet, Baptiste Drouet, David Marembert & Manon Perez*
 
 ## Introduction
@@ -25,7 +25,7 @@ Le programme `tttree` génère la représentation graphique d'un arbre de décis
 Pour tester ce programme, executez le script `tttree_test.sh` :
 
 ```bash
-make  tttree
+make tttree
 ./tttree_test.sh
 ```
 
@@ -37,7 +37,7 @@ Le programme `sm-refresh` permet de jouer au jeu du super-morpion contre l'ordin
 La sortie graphique peut être lue à l'aide du fichier `refresh.html` fourni par les enseignants d'AAP.
 
 ## Programme 3 : sm-bot
-Le programme `sm-bot` calcule le meilleur coup pour le jeu du super-morpion basé sur la position d'entrée en utilisant les principes de négamax et d'élagage alpha-beta. Il devra fournir le coup calculé sur la sortie standard.
+Le programme `sm-bot` calcule le meilleur coup pour le jeu du super-morpion basé sur la position d'entrée en utilisant les principes de négamax et d'élagage alpha-beta. Il devra fournir le coup calculé sur la sortie standard. Il évolue en temps contraint, le temps restant lui étant fourni en argument.
 
 ## Tournoi
 Un tournoi de bots sera organisé en utilisant le programme `sm-bot`, avec un contrôle de temps de 15 minutes plus 30 secondes par coup. Le tournoi déterminera un classement qui contribuera à la note finale du projet.
