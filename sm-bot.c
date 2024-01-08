@@ -7,7 +7,7 @@
 
 #include "super_morpion.h"
 
-#define DEFAULT_MINIMAX_DEPTH 8
+#define DEFAULT_NEGAMAX_DEPTH 10
 // #define DEBUG
 
 // implémentation de super_morpion.h spécifique à ce livrable
@@ -187,7 +187,7 @@ T_eval negamax(T_Super_Morpion position, int depth, int alpha, int beta, enum T_
     if (winner == NOIR)
         return (T_eval){-1, firstPlayer == NOIR ? 642 : -642};
     else if (winner == BLANC)
-        return (T_eval){-1, firstPlayer == BLANC ? 642 : -642};
+        return (T_eval){-1, firstPlayer == NOIR ? 642 : -642};
 
     T_LegalMoves legalMoves = getLegalMoves(&position);
 
@@ -300,6 +300,7 @@ int main(int argc, char **argv)
     }
     char *fen = argv[1];
     int secondsLeft = atoi(argv[2]);
+
     T_Super_Morpion game;
     fillPositionFromFen(&game, fen);
 
@@ -311,24 +312,34 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    int depth = DEFAULT_MINIMAX_DEPTH - (secondsLeft > 20 ? 0 : (secondsLeft > 5 ? 1 : (secondsLeft > 2 ? 2 : 3)));
+    T_LegalMoves legalMoves = getLegalMoves(&game);
+    int legalMovesCount = legalMoves.count;
+    free(legalMoves.legalMoves);
+
+    int depth = DEFAULT_NEGAMAX_DEPTH;
+
+    if (secondsLeft < 60)
+    {
+        depth = DEFAULT_NEGAMAX_DEPTH - 4;
+    }
+    else if ((secondsLeft < 1000 && legalMovesCount > 10) || secondsLeft < 600)
+    {
+        depth = DEFAULT_NEGAMAX_DEPTH - 2;
+    }
 
 #ifdef DEBUG
 
-    printf("dddlastCoupId : %d c\n", game.lastCoupId);
-    drawPositionToFile(&game);
+    printf("> lastCoupId : %d c\n", game.lastCoupId);
 
-    printSuperMorpion(&game);
+    printSuperMorpion(&game, evaluate(&game));
     printf("Trait : %s\n", game.trait == NOIR ? "NOIR" : "BLANC");
 
-    // T_eval bestMove = minimax(game, DEFAULT_MINIMAX_DEPTH, 1, game.trait);
     T_eval bestMove = negamax(game, depth, -1000, 1000, game.trait);
 
     printf("move : %s, eval : %d\n", convertIndexToMove(bestMove.moveId), bestMove.eval);
 
 #else
 
-    // T_eval bestMove = minimax(game, DEFAULT_MINIMAX_DEPTH, 1, game.trait);
     T_eval bestMove = negamax(game, depth, -1000, 1000, game.trait);
 
     char *move = convertIndexToMove(bestMove.moveId);
