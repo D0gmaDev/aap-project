@@ -180,7 +180,20 @@ T_eval minimax(T_Super_Morpion position, int depth, int isMax)
         return (T_eval){-1, evaluate(&position)};
     }
 
+    enum T_Couleur winner = getTTTWinner(position.grilles);
+
+    if (winner == NOIR)
+        return (T_eval){-1, 642};
+    else if (winner == BLANC)
+        return (T_eval){-1, -642};
+
     T_LegalMoves legalMoves = getLegalMoves(&position);
+
+    if (legalMoves.count == 0) // match nul
+    {
+        free(legalMoves.legalMoves);
+        return (T_eval){-1, 0};
+    }
 
     int bestEval = isMax ? -1000 : 1000;
     int bestMove = -3;

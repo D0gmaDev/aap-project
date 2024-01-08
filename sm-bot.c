@@ -182,7 +182,20 @@ T_eval negamax(T_Super_Morpion position, int depth, int alpha, int beta, enum T_
         return (T_eval){-1, firstPlayer == NOIR ? evaluate(&position) : -evaluate(&position)}; // on inverse l'évaluation si c'est au tour des blancs
     }
 
+    enum T_Couleur winner = getTTTWinner(position.grilles);
+
+    if (winner == NOIR)
+        return (T_eval){-1, firstPlayer == NOIR ? 642 : -642};
+    else if (winner == BLANC)
+        return (T_eval){-1, firstPlayer == BLANC ? 642 : -642};
+
     T_LegalMoves legalMoves = getLegalMoves(&position);
+
+    if (legalMoves.count == 0) // match nul
+    {
+        free(legalMoves.legalMoves);
+        return (T_eval){-1, 0};
+    }
 
     int bestEval = -1000;
     int bestMove = -3;
