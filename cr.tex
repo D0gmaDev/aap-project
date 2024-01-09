@@ -1,0 +1,231 @@
+\documentclass[14pt,a4paper]{article}
+\usepackage{../../requirements/base}
+\usepackage{../../requirements/templates/aap-filrouge}
+\usepackage{listings}
+\usepackage[bottom]{footmisc}
+\usepackage{hyperref}
+
+\begin{document}
+
+\start{Compte-Rendu - Fil Rouge}{\textbf{Compte-Rendu Fil Rouge}}{\emph{Super Morpion - Piks \& Co}}
+
+\section*{Introduction}
+Ce compte-rendu a pour objet le fil rouge qui porte sur une approche de la théorie des jeux en programmation C. L'objectif principal est d'implémenter un robot pour jouer au jeu de “Super Morpion”. D'une part nous nous intéresserons à l'algorithme du minimax dans le cas d'un morpion classique puis dans le cas d'un “Super Morpion” avant d'améliorer l'algorithme du minimax dans ce dernier cas.\\
+
+
+\section*{Organisation}
+L'organisation du groupe s'est faite de la manière suivante : Baptiste et David étant plus à l'aise avec la programmation en C se sont attaqués au gros du fil rouge en demandant à Manon et Maïeul de rédiger des portions de codes spécifiques. Tout le groupe s'est concerté pour définir les meilleures fonctions d'évaluation. Des appels Discord ont été fait régulièrement pour vérifier l'avancée, la compréhension et le fonctionnement des codes. Manon et Maïeul ont rédigé le compte rendu pour valider la complète compréhension des codes pour qu'ils puissent approfondir leurs connaissances en programmation en C.\\
+Nos programmes sont tous directement compilables à l'aide du fichier \tt{makefile}.
+Afin de collaborer sur le code, et de garder trace des différentes versions des programmes, en plus de fournir un backup du code en cas de problème, nous avons utilisé Git depuis notre Linux, relié à un repository Github consultable ici : \url{https://github.com/D0gmaDev/aap-project}\footnotemark.\\
+
+Cela nous a aussi permis d'utiliser le système d'intégration continue de Github afin de vérifier que le code compile à chaque commit.
+
+\footnotetext{Accessible à partir de vendredi 12 janvier 2024}
+
+\section{Questions pour un morpion - tttree}
+Cet exercice crée la représentation graphique de l'arbre décisionnel du jeu de morpion à partir d'une grille de départ. L'algorithme minimax est utilisé pour orner les nœuds de leur évaluation (calculée récursivement). Puisque le jeu a une profondeur maximale de 9 coups, on peut atteindre facilement les feuilles, et ainsi déterminer de manière exacte si une feuille de notre arbre est gagnante (1), nulle (0) ou perdante (-1), sans définir d'heuristique particulière. On lit ainsi graphiquement si la position de départ est gagnante, perdante, ou nulle pour le joueur qui joue, et on peut déterminer le meilleur coup à jouer en suivant l'arbre. Ce principe de minimax est développé dans la fonction récursive \tt{printMiniMaxDotTreeFrom(T\_TicTacToe position, int parentId, int isMax)}.\\
+
+Pour rendre ce code le plus lisible possible, nous n'avons pas lésiné sur l'extraction de fonctions d'aide diverses. Pour générer l'image, il nous suffit d'afficher le code dot dans la sortie standard, qui sera redirigée dans un fichier lors de l'appel du programme (script \tt{tttree\_test.sh}). Le langage dot n'étant pas sensible à l'ordre d'écriture des noeuds et des liens, on les affichera dans l'ordre qui nous arrangera le plus, au fil de la récursion, ce qui nous évite pas la même occasion d'avoir besoin de stocker les positions intermédiaires ainsi que les évaluations associées : nous les affichons directement, avant de nous en débarrasser.\\
+
+Voici notre implémentation des 3 états possibles d'une case : nous avons utilisé une énumération, qui nous permet (encore une fois) de maximiser la compréhension du code, à l'inverse de simples int. C'est un aspect qui nous paraît essentiel quand on commence à créer des projets de taille conséquente comme celui-ci.
+
+\begin{lstlisting}
+enum T_Couleur
+{
+    NOIR,
+    BLANC,
+    VIDE
+};
+\end{lstlisting}
+On représente le morpion avec cette structure (on préfère un tableau unidimensionnel qui sera, outre le fait d'être plus efficace, beaucoup plus facile à gérer en mémoire qu'un tableau de tableau, moyennant seulement un peu d'arithmétique\footnotemark).\\
+
+\footnotetext{Cela se révélera encore plus vrai pour l'exercice 2}
+
+\begin{lstlisting}
+typedef struct
+{
+    enum T_Couleur cases[9];
+    enum T_Couleur trait;
+} T_TicTacToe;    
+\end{lstlisting}
+
+Ci-dessous un détail de chaque fonction implémentée ainsi que les différentes initialisations.\\
+
+\begin{itemize}[label=-]
+
+\item\tt{enum T\_Couleur getCouleur(char)} et \tt{char getSymbol(enum T\_Couleur)} permettent la conversion entre les caractères et l'énumération.
+
+\begin{lstlisting}
+assert(getSymbol(getCouleur('x')) == 'x')
+assert(getCouleur(getSymbol(BLANC)) == BLANC)
+\end{lstlisting}
+
+\item\tt{enum T\_Couleur getOther(enum T\_Couleur)} permet de basculer d'un joueur à l'autre.\\
+
+\item\tt{fillPositionFromFen(T\_Morpion* position, char * fen)} : permet d'initialiser les cases du morpions en lisant la chaîne de caractère donnée. La difficulté (relative) provenait du fait que la chaîne de caractère n'est pas nécessairement composée de 9 caractères donc le déplacement dans la grille et dans la chaîne n'est pas synchronisé. Nous avons utilisé le code ASCII des chiffres pour incrémenter notre indice “positionIndex” en cas de rencontre d'un chiffre\footnotemark :
+
+\footnotetext{Etant donné que le code des entiers de 0 à 9 sont consécutifs dans la table ASCII, on peut récupérer l'entier représenté par le caractère.}
+
+\begin{lstlisting}
+positionIndex += (c - '0');
+\end{lstlisting}
+
+\item\tt{printDotPosition()}, \tt{printDotLink()}, \tt{printDotLabel()} : ces trois fonctions permettent d'afficher le code qui sera utilisé pour créer l'image de l'arbre de décision.\\
+\indent Rq: \emph{Notre programme est littéralement du code … qui écrit du code dans un autre langage.}\\
+
+\item\tt{generateNewId()} : Permet d'avoir un identifiant différent pour chaque noeud qui apparaîtra dans l'arbre de décision, ce qui permet aussi d'identifier les liens. On utilise une variable \tt{static}.\\
+
+\item\tt{printMiniMaxDotTreeFrom()} : La  fonction principale du livrable 1, qui utilise le principe du minimax pour évaluer les coups optimaux à jouer pour chacun des joueurs : on prend le maximum des évaluations déterminées par le minimum de chacun de leurs fils respectifs, et \emph{bis repetita}. Les conditions d'arrêt de la récursion sont une grille pleine vérifiée par \tt{isBoardFull()} ou bien une combinaison gagnante vérifiée par \tt{getWinner()}. Elle prend donc en argument une combinaison du jeu et renvoie un entier compris entre -1 et 1.
+
+\end{itemize}
+
+\section{Des cases et des grilles - sm-refresh}
+
+Pour l'exercice 2 et 3, nous avons mis dans des fichiers \tt{super\_morpion.h} et \tt{super\_morpion.c} des structures et fonctions communes, ce qui nous a permis aussi de séparer les tâches.\\
+
+On représente le supermorpion comme ceci : 
+
+\begin{lstlisting}
+typedef struct
+{
+    enum T_Couleur cases[81];
+    enum T_Couleur grilles[9];
+    enum T_Couleur trait;
+    int lastCoupId;
+} T_Super_Morpion;
+\end{lstlisting} 
+
+Le fait d'utiliser un tableau de 81 cases n'est pas un problème pour opérer sur n'importe lequel des petits morpions, en effet, on peut appeler par exemple la fonction \tt{getTTTWinner()} sur la 4\ieme\ grille avec :
+\begin{center}
+    \tt{enum T\_Couleur couleur = getTTTWinner(\&morpion.cases[3 * 9]);}\\
+\end{center}
+
+Cet exercice a pour but de réutiliser le principe du minimax pour jouer au super morpion. Pour observer des temps de calculs entre 1 et 10s, on effectue le minimax à une profondeur entre 6 ou 7, c'est-à-dire qu'il évalue toutes les positions possibles avant de renvoyer le mouvement avec la meilleure l'évaluation (calculée récursivement selon le principe du minimax). Puisqu'on ne peut pas arriver à la fin du jeu dans notre récursion, encore faut-il définir notre heuristique, notre manière d'évaluer un état E du jeu en tant que tel :
+\begin{itemize}[label=-]
+    
+    \item On dispose d'abord pour cela d'une fonction \tt{evaluateTTT()} qui évalue une grille de morpion, que cela soit la grille globale ou une des 9 petites.
+    
+    \item On décide ainsi de s'appuyer sur le pattern d'alignement suivant : on valorise dans les grilles la position suivante : deux pions de la même couleur alignés avec une case vide, et on compte le nombre de telles occurrences dans une grille.
+    
+    \item On définit ainsi au final : 
+    $$
+    E = (G, \{g_0, ..., g_8\})
+    $$
+\begin{align*}
+    &\text{eval}(g) =
+    \begin{cases} \pm 8 & \text{si } g \text{ gagnée}\\
+        0 & \text{si } g \text{ pleine sans gagnant}\\
+        \text{align}(g, \text{x}) - \text{align}(g, \text{o}) & \text{sinon}
+    \end{cases}\\
+    &\text{Eval}(E) = 
+    \begin{cases}
+        \pm 642 & \text{si } G \text{ gagnée}\\
+        0 & \text{si la partie est finie}\\
+        \sum_{i=0}^8  \text{eval}(g_i) + 3 \times \Delta(G) + 40 \times \text{eval}(G) & \text{sinon}
+    \end{cases} 
+\end{align*}
+    
+    
+    où $\Delta(G) = (\#\{\text{grilles gagnées}\} - \#\{\text{grilles perdues}\})$
+    
+    
+\end{itemize}
+
+Ainsi, dans la position bleue, l'ordinateur préférera placer son pion au milieu qu'en haut, car l'évaluation de 2 est supérieure à celle de 1.\\
+
+\begin{minipage}{0.3\textwidth}
+    \begin{center}
+        \includegraphics[width=0.6\textwidth]{src/test1init.png}
+    \end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+    \begin{center}
+        \includegraphics[width=0.6\textwidth]{src/test1v1.png}
+    \end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.3\textwidth}
+    \begin{center}
+        \includegraphics[width=0.6\textwidth]{src/test1v2.png}
+    \end{center}
+\end{minipage}
+
+Dans cette deuxième position, bloquer les 'o' permet de casser le pattern, ce qui est donc avantageux pour l'ordinateur, et semble logique pour nous.
+
+\begin{minipage}{0.5\textwidth}
+    \begin{center}
+        \includegraphics[width=0.35\textwidth]{src/test2init.png}
+    \end{center}
+\end{minipage}
+\hfill
+\begin{minipage}{0.5\textwidth}
+    \begin{center}
+        \includegraphics[width=0.35\textwidth]{src/test2v1.png}
+    \end{center}
+\end{minipage}
+
+Après tests et concertation, notre approche de la fonction d'évaluation nous semble être un bon compromis entre performance et efficacité. Le reste des fonctions utilisées mettent en place la partie, comme celle qui renvoie toutes les cases possibles à jouer à chaque coup ou encore celles qui permettent de générer le code dot qui génère à son tour l'image d'une position.\\
+
+\begin{lstlisting}[language=make]
+    Coup joué par l'ordinateur: 1 b3 (maxEval: 19, temps: 6.92s)
+    -- -- -- -- -- -- -- --
+     . . . | . . . | o . . 
+     o x . | . o o | . . . 
+     o x o | . . . | . . . 
+    -- -- -- -- -- -- -- --
+     o x . | . . x | X X X 
+     . . . | . . o | X X X 
+     o . . | o . . | X X X 
+    -- -- -- -- -- -- -- --
+     X X X | x . . | . x . 
+     X X X | . . . | . . . 
+     X X X | . . . | . . . 
+    -- -- -- -- -- -- -- --
+    Evaluation de la position : 20
+    Coups possibles : 8 b1 | 8 c1 | 8 a2 | 8 b2 | 8 c2 | 8 a3 | 8 b3 | 8 c3 | 
+    Entrez votre coup :
+\end{lstlisting}
+
+Voici la représentation graphique de la même position que nous générons pour y jouer en direct.\\
+Nous avons décidé d'apporter deux améliorations visuelles : le dernier coup joué par l'ordinateur est grisé, ainsi que la case dans laquelle le joueur doit jouer.
+
+\begin{center}
+    \includegraphics[width=0.6\linewidth]{src/g.png}
+\end{center}
+
+Lors d'un premier temps, nous avions pensé utiliser un cache pour garder en mémoire les évaluations, mais la mauvaise invalidation de celui-ci nous créeait des bugs. Nous avons ainsi préféré optimiser la fonction d'évaluation, pour un gain finalement comparable.
+
+\newpage
+\section{La guerre des Morpions - sm-bot}
+
+Le principe de cet exercice ne s'éloigne pas trop de l'exercice 2. En effet, il a pour but d'implémenter un bot proposant le coup optimal à jouer pour une position donnée. Ce code étant destiné à être utilisé pour le tournoi, il doit être meilleur que celui des autres groupes et meilleur que celui fait en exercice 2.  On utilise une variante du minimax : le négamax, mais on optimise surtout grâce à l'élagage alpha-béta : si une position devient trop mauvaise, on étudie pas ses fils. C'est une technique d'optimisation qui permet de réduire le nombre de nœuds explorés. Les paramètres alpha et bêta représentent des bornes. Lors de la recherche, si une branche est évaluée et que la valeur est supérieure à la borne supérieure (alpha) du parent, cette branche peut être ignorée, car le parent ne la considérera pas. De même, si une branche est évaluée et que la valeur est inférieure à la borne inférieure (bêta) du parent, cette branche peut également être ignorée.\\
+
+Pour accélérer la cadence, plusieurs optimisations ont été mises en place pour l'exercice 3 (et aussi le 2) : par exemple, si moins de deux pions sont présents sur une grille, son évaluation est directement égale à 0. Dans la même optique, le premier coup est hardcodé dans le programme : inutile d'évaluer en profondeur une grille entièrement vide : ça serait très coûteux.\\
+
+\begin{lstlisting}
+if (game.lastCoupId == -1)
+{
+    char *move = convertIndexToMove(0);
+    printf("%s", move);
+    free(move);
+    return 0;
+}
+\end{lstlisting}
+
+De plus, s'il reste trop peu de temps, ou si le nombre de coups légaux est trop grand, la profondeur de la récursion est automatiquement réduite pour être sûr que le programme propose un coup dans le temps imparti.
+
+\section*{Conclusion}
+Ce fil rouge nous a permis à l'aide des connaissances et des facilités de certains à se conforter dans la manipulation du langage C ainsi que du shell. D'autre part, il a permis de comprendre l'intérêt des structures complexes dans un programme plus large qu'un TEA.\\
+L'aspect avantageux de ce fil rouge est qu'une fois le code écrit nous apprécions jouer au jeu du super morpion ce qui permettait de détecter des failles dans le jeu et de les corriger afin de rendre le bot le meilleur possible. En perspectives d'évolution nous avons pensé à calculer en temps réel le temps pris par l'évaluation afin de revoir à la baisse les profondeurs des récursions en direct.
+
+\newpage
+\section*{Bibliographie}
+\begin{itemize}
+    \item \url{https://fr.wikipedia.org/wiki/Algorithme_minimax}
+    \item \url{https://fr.wikipedia.org/wiki/\%C3\%89lagage_alpha-b\%C3\%AAta}
+    \item \url{https://fr.wikipedia.org/wiki/Th\%C3\%A9orie_des_jeux}
+    \item \url{https://en.wikipedia.org/wiki/Negamax}
+\end{itemize}
+
+\end{document} 
