@@ -7,7 +7,7 @@
 
 #include "super_morpion.h"
 
-#define DEFAULT_NEGAMAX_DEPTH 10
+#define DEFAULT_NEGAMAX_DEPTH 8
 // #define DEBUG
 
 // implémentation de super_morpion.h spécifique à ce livrable
@@ -318,11 +318,7 @@ int main(int argc, char **argv)
 
     int depth = DEFAULT_NEGAMAX_DEPTH;
 
-    if (secondsLeft < 60)
-    {
-        depth = DEFAULT_NEGAMAX_DEPTH - 4;
-    }
-    else if ((secondsLeft < 1000 && legalMovesCount > 10) || secondsLeft < 600)
+    if ((secondsLeft < 600 && legalMovesCount > 10) || secondsLeft < 300)
     {
         depth = DEFAULT_NEGAMAX_DEPTH - 2;
     }
